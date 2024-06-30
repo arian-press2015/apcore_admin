@@ -3,9 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"io/ioutil"
 
+	"github.com/arian-press2015/apcore_admin/config"
+	"github.com/arian-press2015/apcore_admin/token"
+	"github.com/arian-press2015/apcore_admin/utils/httpclient"
 	"github.com/spf13/cobra"
 )
 
@@ -13,26 +16,28 @@ var statisticsCmd = &cobra.Command{
 	Use:   "statistics",
 	Short: "Get statistics",
 	Run: func(cmd *cobra.Command, args []string) {
-		getStatistics()
+		cfg := config.NewConfig()
+		httpClient := httpclient.NewHTTPClient()
+		tokenManager := token.NewTokenManager(cfg)
+		getStatistics(cfg, httpClient, tokenManager)
 	},
 }
 
-func getStatistics() {
-	url := fmt.Sprintf("%s/admin/statistics", backendURL)
+func getStatistics(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager) {
+	url := fmt.Sprintf("%s/admin/statistics", cfg.BackendURL)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
 		return
 	}
 
-	err = authenticateRequest(req)
+	err = tokenManager.AuthenticateRequest(req)
 	if err != nil {
 		fmt.Printf("Authentication error: %v\n", err)
 		return
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Printf("Error fetching statistics: %v\n", err)
 		return
@@ -40,7 +45,7 @@ func getStatistics() {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		fmt.Printf("Error: %s\n", string(body))
 		return
 	}
@@ -56,11 +61,7 @@ func getStatistics() {
 }
 
 type Statistics struct {
-	UserCount      int `json:"user_count"`
-	CustomerCount  int `json:"customer_count"`
-	TotalRevenue   int `json:"total_revenue"`
-}
-
-func init() {
-	rootCmd.AddCommand(statisticsCmd)
+	UserCount     int `json:"user_count"`
+	CustomerCount int `json:"customer_count"`
+	TotalRevenue  int `json:"total_revenue"`
 }

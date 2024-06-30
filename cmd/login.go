@@ -2,36 +2,41 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
-	"net/http"
-	"bytes"
 
+	"github.com/arian-press2015/apcore_admin/config"
+	"github.com/arian-press2015/apcore_admin/token"
+	"github.com/arian-press2015/apcore_admin/utils/httpclient"
 	"github.com/spf13/cobra"
 )
-
-var backendURL string
-var tokenFile = ".auth_token"
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to the admin CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter username: ")
-		username, _ := reader.ReadString('\n')
+		fmt.Print("Enter phone: ")
+		phone, _ := reader.ReadString('\n')
 		fmt.Print("Enter password: ")
 		password, _ := reader.ReadString('\n')
 		fmt.Print("Enter MFA code: ")
 		mfaCode, _ := reader.ReadString('\n')
 
-		username = strings.TrimSpace(username)
+		phone = strings.TrimSpace(phone)
 		password = strings.TrimSpace(password)
 		mfaCode = strings.TrimSpace(mfaCode)
 
-		err := login(username, password, mfaCode)
+		cfg := config.NewConfig()
+		httpClient := httpclient.NewHTTPClient()
+		tokenManager := token.NewTokenManager(cfg)
+
+		err := login(cfg, httpClient, tokenManager, phone, password, mfaCode)
 		if err != nil {
 			fmt.Printf("Login failed: %v\n", err)
 			return
@@ -40,22 +45,22 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func login(username, password, mfaCode string) error {
-	url := fmt.Sprintf("%s/login", backendURL)
+func login(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager, phone, password, totp string) error {
+	url := fmt.Sprintf("%s/admin/auth", cfg.BackendURL)
 	data := map[string]string{
-		"username": username,
+		"phone":    phone,
 		"password": password,
-		"mfa_code": mfaCode,
+		"totp":     totp,
 	}
 	jsonData, _ := json.Marshal(data)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("error: %s", string(body))
 	}
 
@@ -70,16 +75,5 @@ func login(username, password, mfaCode string) error {
 		return fmt.Errorf("no token found in response")
 	}
 
-	// Save token to file
-	err = ioutil.WriteFile(tokenFile, []byte(token), 0600)
-	if err != nil {
-		return fmt.Errorf("failed to save token: %v", err)
-	}
-
-	return nil
-}
-
-func init() {
-	rootCmd.AddCommand(loginCmd)
-	loginCmd.Flags().StringVarP(&backendURL, "backend", "b", "http://localhost:8080", "Backend URL")
+	return tokenManager.SaveToken(token)
 }

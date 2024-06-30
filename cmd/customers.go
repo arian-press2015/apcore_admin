@@ -5,11 +5,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
-	"io/ioutil"
 
+	"github.com/arian-press2015/apcore_admin/config"
+	"github.com/arian-press2015/apcore_admin/token"
+	"github.com/arian-press2015/apcore_admin/utils/httpclient"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +25,10 @@ var listCustomersCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Get list of customers",
 	Run: func(cmd *cobra.Command, args []string) {
-		getCustomers(0)
+		cfg := config.NewConfig()
+		httpClient := httpclient.NewHTTPClient()
+		tokenManager := token.NewTokenManager(cfg)
+		getCustomers(cfg, httpClient, tokenManager, 0)
 	},
 }
 
@@ -30,26 +36,33 @@ var createCustomerCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new customer",
 	Run: func(cmd *cobra.Command, args []string) {
-		createCustomer()
+		cfg := config.NewConfig()
+		httpClient := httpclient.NewHTTPClient()
+		tokenManager := token.NewTokenManager(cfg)
+		createCustomer(cfg, httpClient, tokenManager)
 	},
 }
 
-func getCustomers(offset int) {
-	url := fmt.Sprintf("%s/admin/customers?offset=%d&limit=10", backendURL, offset)
+func init() {
+	customersCmd.AddCommand(listCustomersCmd)
+	customersCmd.AddCommand(createCustomerCmd)
+}
+
+func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager, offset int) {
+	url := fmt.Sprintf("%s/admin/customers?offset=%d&limit=10", cfg.BackendURL, offset)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
 		return
 	}
 
-	err = authenticateRequest(req)
+	err = tokenManager.AuthenticateRequest(req)
 	if err != nil {
 		fmt.Printf("Authentication error: %v\n", err)
 		return
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Printf("Error fetching customers: %v\n", err)
 		return
@@ -57,7 +70,7 @@ func getCustomers(offset int) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		fmt.Printf("Error: %s\n", string(body))
 		return
 	}
@@ -73,25 +86,24 @@ func getCustomers(offset int) {
 		fmt.Printf("ID: %s, Name: %s, Phone: %s\n", customer.ID, customer.Name, customer.Phone)
 	}
 
-	// Handle pagination
 	fmt.Println("Press 'n' for next page, 'p' for previous page, or any other key to exit.")
 	var input string
 	fmt.Scanln(&input)
 	switch input {
 	case "n":
-		getCustomers(offset + 10)
+		getCustomers(cfg, httpClient, tokenManager, offset+10)
 	case "p":
 		if offset-10 >= 0 {
-			getCustomers(offset - 10)
+			getCustomers(cfg, httpClient, tokenManager, offset-10)
 		} else {
-			getCustomers(0)
+			getCustomers(cfg, httpClient, tokenManager, 0)
 		}
 	default:
 		return
 	}
 }
 
-func createCustomer() {
+func createCustomer(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter customer name: ")
 	name, _ := reader.ReadString('\n')
@@ -115,7 +127,7 @@ func createCustomer() {
 		return
 	}
 
-	url := fmt.Sprintf("%s/admin/customers", backendURL)
+	url := fmt.Sprintf("%s/admin/customers", cfg.BackendURL)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
@@ -123,14 +135,13 @@ func createCustomer() {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	err = authenticateRequest(req)
+	err = tokenManager.AuthenticateRequest(req)
 	if err != nil {
 		fmt.Printf("Authentication error: %v\n", err)
 		return
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Printf("Error creating customer: %v\n", err)
 		return
@@ -138,7 +149,7 @@ func createCustomer() {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		fmt.Printf("Error: %s\n", string(body))
 		return
 	}
@@ -152,10 +163,4 @@ type Customer struct {
 	Details string `json:"details"`
 	Phone   string `json:"phone"`
 	Logo    string `json:"logo"`
-}
-
-func init() {
-	rootCmd.AddCommand(customersCmd)
-	customersCmd.AddCommand(listCustomersCmd)
-	customersCmd.AddCommand(createCustomerCmd)
 }
