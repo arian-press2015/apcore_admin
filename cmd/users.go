@@ -18,7 +18,20 @@ var usersCmd = &cobra.Command{
 
 func getUsers(offset int) {
 	url := fmt.Sprintf("%s/admin/users?offset=%d&limit=10", backendURL, offset)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
+		return
+	}
+
+	err = authenticateRequest(req)
+	if err != nil {
+		fmt.Printf("Authentication error: %v\n", err)
+		return
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Error fetching users: %v\n", err)
 		return

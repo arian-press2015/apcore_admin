@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"io/ioutil"
 
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,20 @@ var createCustomerCmd = &cobra.Command{
 
 func getCustomers(offset int) {
 	url := fmt.Sprintf("%s/admin/customers?offset=%d&limit=10", backendURL, offset)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
+		return
+	}
+
+	err = authenticateRequest(req)
+	if err != nil {
+		fmt.Printf("Authentication error: %v\n", err)
+		return
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Error fetching customers: %v\n", err)
 		return
@@ -102,7 +116,21 @@ func createCustomer() {
 	}
 
 	url := fmt.Sprintf("%s/admin/customers", backendURL)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	err = authenticateRequest(req)
+	if err != nil {
+		fmt.Printf("Authentication error: %v\n", err)
+		return
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Error creating customer: %v\n", err)
 		return

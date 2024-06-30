@@ -2,14 +2,18 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+	"net/http"
+	"bytes"
 
 	"github.com/spf13/cobra"
 )
 
 var backendURL string
+var tokenFile = ".auth_token"
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
@@ -37,14 +41,41 @@ var loginCmd = &cobra.Command{
 }
 
 func login(username, password, mfaCode string) error {
-	// Implement the login logic here by making an HTTP request to the backend
-	// Store the token if login is successful
-	// Example:
-	// token, err := authenticate(username, password, mfaCode)
-	// if err != nil {
-	//     return err
-	// }
-	// saveToken(token)
+	url := fmt.Sprintf("%s/login", backendURL)
+	data := map[string]string{
+		"username": username,
+		"password": password,
+		"mfa_code": mfaCode,
+	}
+	jsonData, _ := json.Marshal(data)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("error: %s", string(body))
+	}
+
+	var result map[string]string
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return err
+	}
+
+	token, ok := result["token"]
+	if !ok {
+		return fmt.Errorf("no token found in response")
+	}
+
+	// Save token to file
+	err = ioutil.WriteFile(tokenFile, []byte(token), 0600)
+	if err != nil {
+		return fmt.Errorf("failed to save token: %v", err)
+	}
+
 	return nil
 }
 

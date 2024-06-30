@@ -19,7 +19,20 @@ var statisticsCmd = &cobra.Command{
 
 func getStatistics() {
 	url := fmt.Sprintf("%s/admin/statistics", backendURL)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
+		return
+	}
+
+	err = authenticateRequest(req)
+	if err != nil {
+		fmt.Printf("Authentication error: %v\n", err)
+		return
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Error fetching statistics: %v\n", err)
 		return
