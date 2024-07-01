@@ -63,14 +63,15 @@ func getUsers(cfg *config.Config, httpClient *http.Client, tokenManager *token.T
 		return
 	}
 
-	headers := []string{"ID", "Name", "Phone", "Verified"}
+	headers := []string{"No.", "ID", "Name", "Phone", "Verified"}
 	var rows [][]string
-	for _, user := range responseBody.Data {
+	for index, user := range responseBody.Data {
 		verified := "✘"
 		if user.Verified {
 			verified = "✔"
 		}
-		row := []string{user.ID, user.FullName, user.Phone, verified}
+		rowNumber := fmt.Sprintf("%d", index+1)
+		row := []string{rowNumber, user.ID, user.FullName, user.Phone, verified}
 		rows = append(rows, row)
 	}
 
