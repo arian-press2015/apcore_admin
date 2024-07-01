@@ -5,13 +5,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 
 	"github.com/arian-press2015/apcore_admin/config"
-	"github.com/arian-press2015/apcore_admin/token"
 	"github.com/arian-press2015/apcore_admin/utils/httpclient"
 	"github.com/arian-press2015/apcore_admin/utils/table"
 	"github.com/spf13/cobra"
@@ -27,9 +24,8 @@ var listCustomersCmd = &cobra.Command{
 	Short: "Get list of customers",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.NewConfig()
-		httpClient := httpclient.NewHTTPClient()
-		tokenManager := token.NewTokenManager(cfg)
-		getCustomers(cfg, httpClient, tokenManager, 0)
+		httpClient := httpclient.NewHTTPClient(cfg)
+		getCustomers(cfg, httpClient, 0)
 	},
 }
 
@@ -38,9 +34,8 @@ var createCustomerCmd = &cobra.Command{
 	Short: "Create a new customer",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.NewConfig()
-		httpClient := httpclient.NewHTTPClient()
-		tokenManager := token.NewTokenManager(cfg)
-		createCustomer(cfg, httpClient, tokenManager)
+		httpClient := httpclient.NewHTTPClient(cfg)
+		createCustomer(cfg, httpClient)
 	},
 }
 
@@ -49,42 +44,30 @@ func init() {
 	customersCmd.AddCommand(createCustomerCmd)
 }
 
-func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager, offset int) {
+func getCustomers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset int) {
 	url := fmt.Sprintf("%s/customers?offset=%d&limit=10", cfg.BackendURL, offset)
-	req, err := http.NewRequest("GET", url, nil)
+	resp, err := httpClient.MakeRequest("GET", url, nil)
 	if err != nil {
-		fmt.Printf("Error creating request: %v\n", err)
-		return
-	}
-
-	err = tokenManager.AuthenticateRequest(req)
-	if err != nil {
-		fmt.Printf("Authentication error: %v\n", err)
-		return
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		fmt.Printf("Error fetching customers: %v\n", err)
+		fmt.Printf("%v\n", err)
 		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("Error: %s\n", string(body))
-		return
+	var responseBody struct {
+		Data    []Customer `json:"data"`
+		Message string     `json:"message"`
+		TrackID string     `json:"trackId"`
 	}
 
-	var customers []Customer
-	err = json.NewDecoder(resp.Body).Decode(&customers)
+	err = json.NewDecoder(resp.Body).Decode(&responseBody)
 	if err != nil {
 		fmt.Printf("Error decoding response: %v\n", err)
 		return
 	}
 
-	for _, customer := range customers {
-		fmt.Printf("ID: %s, Name: %s, Phone: %s\n", customer.ID, customer.Name, customer.Phone)
+	if len(responseBody.Data) == 0 {
+		fmt.Println("No customers found.")
+		return
 	}
 
 	headers := []string{"No.", "ID", "Name", "Phone", "Is Active", "Is Disabled"}
@@ -110,19 +93,19 @@ func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *tok
 	fmt.Scanln(&input)
 	switch input {
 	case "n":
-		getCustomers(cfg, httpClient, tokenManager, offset+10)
+		getCustomers(cfg, httpClient, offset+10)
 	case "p":
 		if offset-10 >= 0 {
-			getCustomers(cfg, httpClient, tokenManager, offset-10)
+			getCustomers(cfg, httpClient, offset-10)
 		} else {
-			getCustomers(cfg, httpClient, tokenManager, 0)
+			getCustomers(cfg, httpClient, 0)
 		}
 	default:
 		return
 	}
 }
 
-func createCustomer(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager) {
+func createCustomer(cfg *config.Config, httpClient *httpclient.HTTPClient) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter customer name: ")
 	name, _ := reader.ReadString('\n')
@@ -147,41 +130,22 @@ func createCustomer(cfg *config.Config, httpClient *http.Client, tokenManager *t
 	}
 
 	url := fmt.Sprintf("%s/customers", cfg.BackendURL)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	resp, err := httpClient.MakeRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		fmt.Printf("Error creating request: %v\n", err)
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	err = tokenManager.AuthenticateRequest(req)
-	if err != nil {
-		fmt.Printf("Authentication error: %v\n", err)
-		return
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		fmt.Printf("Error creating customer: %v\n", err)
+		fmt.Printf("%v\n", err)
 		return
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("Error: %s\n", string(body))
-		return
-	}
 
 	fmt.Println("Customer created successfully")
 }
 
 type Customer struct {
-    ID         string `json:"id"`
-    Name       string `json:"name"`
-    Details    string `json:"details"`
-    Phone      string `json:"phone"`
-    Logo       string `json:"logo"`
-    IsActive   bool   `json:"isActive"`
-    IsDisabled bool   `json:"isDisabled"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Details    string `json:"details"`
+	Phone      string `json:"phone"`
+	Logo       string `json:"logo"`
+	IsActive   bool   `json:"isActive"`
+	IsDisabled bool   `json:"isDisabled"`
 }
