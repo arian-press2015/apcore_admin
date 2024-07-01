@@ -9,6 +9,7 @@ import (
 	"github.com/arian-press2015/apcore_admin/config"
 	"github.com/arian-press2015/apcore_admin/token"
 	"github.com/arian-press2015/apcore_admin/utils/httpclient"
+	"github.com/arian-press2015/apcore_admin/utils/table"
 	"github.com/spf13/cobra"
 )
 
@@ -62,9 +63,18 @@ func getUsers(cfg *config.Config, httpClient *http.Client, tokenManager *token.T
 		return
 	}
 
+	headers := []string{"ID", "Name", "Phone", "Verified"}
+	var rows [][]string
 	for _, user := range responseBody.Data {
-		fmt.Printf("ID: %s, Name: %s, Phone: %s, Verified: %t\n", user.ID, user.FullName, user.Phone, user.Verified)
+		verified := "✘"
+		if user.Verified {
+			verified = "✔"
+		}
+		row := []string{user.ID, user.FullName, user.Phone, verified}
+		rows = append(rows, row)
 	}
+
+	table.PrintTable(headers, rows)
 
 	fmt.Println("Press 'n' for next page, 'p' for previous page, or any other key to exit.")
 	var input string

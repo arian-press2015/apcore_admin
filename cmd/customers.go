@@ -13,6 +13,7 @@ import (
 	"github.com/arian-press2015/apcore_admin/config"
 	"github.com/arian-press2015/apcore_admin/token"
 	"github.com/arian-press2015/apcore_admin/utils/httpclient"
+	"github.com/arian-press2015/apcore_admin/utils/table"
 	"github.com/spf13/cobra"
 )
 
@@ -86,6 +87,23 @@ func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *tok
 		fmt.Printf("ID: %s, Name: %s, Phone: %s\n", customer.ID, customer.Name, customer.Phone)
 	}
 
+	headers := []string{"ID", "Name", "Phone", "Is Active", "Is Disabled"}
+	var rows [][]string
+	for _, customer := range customers {
+		isActive := "✘"
+		if customer.IsActive {
+			isActive = "✔"
+		}
+		isDisabled := "✘"
+		if customer.IsDisabled {
+			isDisabled = "✔"
+		}
+		row := []string{customer.ID, customer.Name, customer.Phone, isActive, isDisabled}
+		rows = append(rows, row)
+	}
+
+	table.PrintTable(headers, rows)
+
 	fmt.Println("Press 'n' for next page, 'p' for previous page, or any other key to exit.")
 	var input string
 	fmt.Scanln(&input)
@@ -158,9 +176,11 @@ func createCustomer(cfg *config.Config, httpClient *http.Client, tokenManager *t
 }
 
 type Customer struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Details string `json:"details"`
-	Phone   string `json:"phone"`
-	Logo    string `json:"logo"`
+    ID         string `json:"id"`
+    Name       string `json:"name"`
+    Details    string `json:"details"`
+    Phone      string `json:"phone"`
+    Logo       string `json:"logo"`
+    IsActive   bool   `json:"isActive"`
+    IsDisabled bool   `json:"isDisabled"`
 }
