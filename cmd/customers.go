@@ -87,9 +87,9 @@ func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *tok
 		fmt.Printf("ID: %s, Name: %s, Phone: %s\n", customer.ID, customer.Name, customer.Phone)
 	}
 
-	headers := []string{"ID", "Name", "Phone", "Is Active", "Is Disabled"}
+	headers := []string{"No.", "ID", "Name", "Phone", "Is Active", "Is Disabled"}
 	var rows [][]string
-	for _, customer := range customers {
+	for index, customer := range responseBody.Data {
 		isActive := "✘"
 		if customer.IsActive {
 			isActive = "✔"
@@ -98,7 +98,8 @@ func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *tok
 		if customer.IsDisabled {
 			isDisabled = "✔"
 		}
-		row := []string{customer.ID, customer.Name, customer.Phone, isActive, isDisabled}
+		rowNumber := fmt.Sprintf("%d", index+1)
+		row := []string{rowNumber, customer.ID, customer.Name, customer.Phone, isActive, isDisabled}
 		rows = append(rows, row)
 	}
 
