@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -38,7 +39,7 @@ func login(httpClient *httpclient.HTTPClient, cfg *config.Config, phone, passwor
 		return fmt.Errorf("error marshaling login parameters: %v", err)
 	}
 
-	resp, err := httpClient.MakeLoginRequest(url, body)
+	resp, err := httpClient.MakeUnauthenticatedRequest("POST", url, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

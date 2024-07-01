@@ -1,7 +1,6 @@
 package httpclient
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,8 +46,8 @@ func (hc *HTTPClient) MakeRequest(method, url string, body io.Reader) (*http.Res
 	return resp, nil
 }
 
-func (hc *HTTPClient) MakeLoginRequest(url string, body []byte) (*http.Response, error) {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+func (hc *HTTPClient) MakeUnauthenticatedRequest(method, url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %v", err)
 	}
