@@ -49,7 +49,7 @@ func init() {
 }
 
 func getCustomers(cfg *config.Config, httpClient *http.Client, tokenManager *token.TokenManager, offset int) {
-	url := fmt.Sprintf("%s/admin/customers?offset=%d&limit=10", cfg.BackendURL, offset)
+	url := fmt.Sprintf("%s/customers?offset=%d&limit=10", cfg.BackendURL, offset)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
@@ -127,7 +127,7 @@ func createCustomer(cfg *config.Config, httpClient *http.Client, tokenManager *t
 		return
 	}
 
-	url := fmt.Sprintf("%s/admin/customers", cfg.BackendURL)
+	url := fmt.Sprintf("%s/customers", cfg.BackendURL)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
