@@ -105,22 +105,16 @@ func getCustomers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset 
 	}
 }
 
-func createCustomer(cfg *config.Config, httpClient *httpclient.HTTPClient) {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter customer name: ")
-	name, _ := reader.ReadString('\n')
-	fmt.Print("Enter customer details: ")
-	details, _ := reader.ReadString('\n')
-	fmt.Print("Enter customer phone: ")
-	phone, _ := reader.ReadString('\n')
-	fmt.Print("Enter customer logo URL: ")
-	logo, _ := reader.ReadString('\n')
+	name := utils.Prompt("Enter customer name: ")
+	details := utils.Prompt("Enter customer details: ")
+	phone := utils.Prompt("Enter customer phone: ")
+	logo := utils.Prompt("Enter customer logo URL: ")
 
 	customer := Customer{
-		Name:    strings.TrimSpace(name),
-		Details: strings.TrimSpace(details),
-		Phone:   strings.TrimSpace(phone),
-		Logo:    strings.TrimSpace(logo),
+		Name:    name,
+		Details: details,
+		Phone:   phone,
+		Logo:    logo,
 	}
 
 	data, err := json.Marshal(customer)
