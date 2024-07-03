@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/arian-press2015/apcore_admin/config"
+	"github.com/arian-press2015/apcore_admin/utils"
 	"github.com/arian-press2015/apcore_admin/utils/httpclient"
 	"github.com/arian-press2015/apcore_admin/utils/table"
 	"github.com/spf13/cobra"
@@ -24,8 +20,8 @@ var listCustomersCmd = &cobra.Command{
 	Short: "Get list of customers",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.NewConfig()
-		httpClient := httpclient.NewHTTPClient(cfg)
-		getCustomers(cfg, httpClient, 0)
+		httpParser := httpclient.NewHTTPParser(cfg)
+		getCustomers(cfg, httpParser, 0)
 	},
 }
 
@@ -34,8 +30,8 @@ var createCustomerCmd = &cobra.Command{
 	Short: "Create a new customer",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.NewConfig()
-		httpClient := httpclient.NewHTTPClient(cfg)
-		createCustomer(cfg, httpClient)
+		httpParser := httpclient.NewHTTPParser(cfg)
+		createCustomer(cfg, httpParser)
 	},
 }
 
@@ -44,24 +40,14 @@ func init() {
 	customersCmd.AddCommand(createCustomerCmd)
 }
 
-func getCustomers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset int) {
+func getCustomers(cfg *config.Config, parser *httpclient.HTTPParser, offset int) {
 	url := fmt.Sprintf("%s/customers?offset=%d&limit=10", cfg.BackendURL, offset)
-	resp, err := httpClient.MakeRequest("GET", url, nil)
+
+	var responseBody CustomersResponse
+
+	err := parser.ParseRequest("GET", url, nil, &responseBody)
 	if err != nil {
 		fmt.Printf("%v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var responseBody struct {
-		Data    []Customer `json:"data"`
-		Message string     `json:"message"`
-		TrackID string     `json:"trackId"`
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&responseBody)
-	if err != nil {
-		fmt.Printf("Error decoding response: %v\n", err)
 		return
 	}
 
@@ -93,18 +79,19 @@ func getCustomers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset 
 	fmt.Scanln(&input)
 	switch input {
 	case "n":
-		getCustomers(cfg, httpClient, offset+10)
+		getCustomers(cfg, parser, offset+10)
 	case "p":
 		if offset-10 >= 0 {
-			getCustomers(cfg, httpClient, offset-10)
+			getCustomers(cfg, parser, offset-10)
 		} else {
-			getCustomers(cfg, httpClient, 0)
+			getCustomers(cfg, parser, 0)
 		}
 	default:
 		return
 	}
 }
 
+func createCustomer(cfg *config.Config, parser *httpclient.HTTPParser) {
 	name := utils.Prompt("Enter customer name: ")
 	details := utils.Prompt("Enter customer details: ")
 	phone := utils.Prompt("Enter customer phone: ")
@@ -117,21 +104,22 @@ func getCustomers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset 
 		Logo:    logo,
 	}
 
-	data, err := json.Marshal(customer)
-	if err != nil {
-		fmt.Printf("Error marshaling customer: %v\n", err)
-		return
-	}
+	var responseBody CustomersResponse
 
 	url := fmt.Sprintf("%s/customers", cfg.BackendURL)
-	resp, err := httpClient.MakeRequest("POST", url, bytes.NewBuffer(data))
+	err := parser.ParseRequest("POST", url, customer, &responseBody)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		return
 	}
-	defer resp.Body.Close()
 
 	fmt.Println("Customer created successfully")
+}
+
+type CustomersResponse struct {
+	Data    []Customer `json:"data"`
+	Message string     `json:"message"`
+	TrackID string     `json:"trackId"`
 }
 
 type Customer struct {

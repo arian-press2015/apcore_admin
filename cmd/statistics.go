@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/arian-press2015/apcore_admin/config"
@@ -14,24 +13,19 @@ var statisticsCmd = &cobra.Command{
 	Short: "Get statistics",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.NewConfig()
-		httpClient := httpclient.NewHTTPClient(cfg)
-		getStatistics(cfg, httpClient)
+		httpParser := httpclient.NewHTTPParser(cfg)
+		getStatistics(cfg, httpParser)
 	},
 }
 
-func getStatistics(cfg *config.Config, httpClient *httpclient.HTTPClient) {
+func getStatistics(cfg *config.Config, parser *httpclient.HTTPParser) {
 	url := fmt.Sprintf("%s/admin/statistics", cfg.BackendURL)
-	resp, err := httpClient.MakeRequest("GET", url, nil)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
-	}
-	defer resp.Body.Close()
 
 	var stats Statistics
-	err = json.NewDecoder(resp.Body).Decode(&stats)
+
+	err := parser.ParseRequest("GET", url, nil, &stats)
 	if err != nil {
-		fmt.Printf("Error decoding response: %v\n", err)
+		fmt.Printf("%v\n", err)
 		return
 	}
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/arian-press2015/apcore_admin/config"
@@ -20,8 +19,8 @@ var listUsersCmd = &cobra.Command{
 	Short: "Get list of users",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.NewConfig()
-		httpClient := httpclient.NewHTTPClient(cfg)
-		getUsers(cfg, httpClient, 0)
+		httpParser := httpclient.NewHTTPParser(cfg)
+		getUsers(cfg, httpParser, 0)
 	},
 }
 
@@ -29,24 +28,14 @@ func init() {
 	usersCmd.AddCommand(listUsersCmd)
 }
 
-func getUsers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset int) {
+func getUsers(cfg *config.Config, parser *httpclient.HTTPParser, offset int) {
 	url := fmt.Sprintf("%s/users?offset=%d&limit=10", cfg.BackendURL, offset)
-	resp, err := httpClient.MakeRequest("GET", url, nil)
+
+	var responseBody UsersReponse
+
+	err := parser.ParseRequest("GET", url, nil, &responseBody)
 	if err != nil {
 		fmt.Printf("%v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var responseBody struct {
-		Data    []User `json:"data"`
-		Message string `json:"message"`
-		TrackID string `json:"trackId"`
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&responseBody)
-	if err != nil {
-		fmt.Printf("Error decoding response: %v\n", err)
 		return
 	}
 
@@ -74,16 +63,22 @@ func getUsers(cfg *config.Config, httpClient *httpclient.HTTPClient, offset int)
 	fmt.Scanln(&input)
 	switch input {
 	case "n":
-		getUsers(cfg, httpClient, offset+10)
+		getUsers(cfg, parser, offset+10)
 	case "p":
 		if offset-10 >= 0 {
-			getUsers(cfg, httpClient, offset-10)
+			getUsers(cfg, parser, offset-10)
 		} else {
-			getUsers(cfg, httpClient, 0)
+			getUsers(cfg, parser, 0)
 		}
 	default:
 		return
 	}
+}
+
+type UsersReponse struct {
+	Data    []User `json:"data"`
+	Message string `json:"message"`
+	TrackID string `json:"trackId"`
 }
 
 type User struct {
