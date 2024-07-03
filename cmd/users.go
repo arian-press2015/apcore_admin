@@ -44,19 +44,7 @@ func getUsers(cfg *config.Config, parser *httpclient.HTTPParser, offset int) {
 		return
 	}
 
-	headers := []string{"No.", "ID", "Name", "Phone", "Verified"}
-	var rows [][]string
-	for index, user := range responseBody.Data {
-		verified := "✘"
-		if user.Verified {
-			verified = "✔"
-		}
-		rowNumber := fmt.Sprintf("%d", index+1)
-		row := []string{rowNumber, user.ID, user.FullName, user.Phone, verified}
-		rows = append(rows, row)
-	}
-
-	table.PrintTable(headers, rows)
+	drawUsersTable(responseBody.Data)
 
 	fmt.Println("Press 'n' for next page, 'p' for previous page, or any other key to exit.")
 	var input string
@@ -73,6 +61,22 @@ func getUsers(cfg *config.Config, parser *httpclient.HTTPParser, offset int) {
 	default:
 		return
 	}
+}
+
+func drawUsersTable(data []User){
+	headers := []string{"No.", "ID", "Name", "Phone", "Verified"}
+	var rows [][]string
+	for index, user := range data {
+		verified := "✘"
+		if user.Verified {
+			verified = "✔"
+		}
+		rowNumber := fmt.Sprintf("%d", index+1)
+		row := []string{rowNumber, user.ID, user.FullName, user.Phone, verified}
+		rows = append(rows, row)
+	}
+
+	table.PrintTable(headers, rows)
 }
 
 type UsersReponse struct {

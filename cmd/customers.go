@@ -56,23 +56,7 @@ func getCustomers(cfg *config.Config, parser *httpclient.HTTPParser, offset int)
 		return
 	}
 
-	headers := []string{"No.", "ID", "Name", "Phone", "Is Active", "Is Disabled"}
-	var rows [][]string
-	for index, customer := range responseBody.Data {
-		isActive := "✘"
-		if customer.IsActive {
-			isActive = "✔"
-		}
-		isDisabled := "✘"
-		if customer.IsDisabled {
-			isDisabled = "✔"
-		}
-		rowNumber := fmt.Sprintf("%d", index+1)
-		row := []string{rowNumber, customer.ID, customer.Name, customer.Phone, isActive, isDisabled}
-		rows = append(rows, row)
-	}
-
-	table.PrintTable(headers, rows)
+	drawCustomersTable(responseBody.Data)
 
 	fmt.Println("Press 'n' for next page, 'p' for previous page, or any other key to exit.")
 	var input string
@@ -114,6 +98,26 @@ func createCustomer(cfg *config.Config, parser *httpclient.HTTPParser) {
 	}
 
 	fmt.Println("Customer created successfully")
+}
+
+func drawCustomersTable(data []Customer) {
+	headers := []string{"No.", "ID", "Name", "Phone", "Is Active", "Is Disabled"}
+	var rows [][]string
+	for index, customer := range data {
+		isActive := "✘"
+		if customer.IsActive {
+			isActive = "✔"
+		}
+		isDisabled := "✘"
+		if customer.IsDisabled {
+			isDisabled = "✔"
+		}
+		rowNumber := fmt.Sprintf("%d", index+1)
+		row := []string{rowNumber, customer.ID, customer.Name, customer.Phone, isActive, isDisabled}
+		rows = append(rows, row)
+	}
+
+	table.PrintTable(headers, rows)
 }
 
 type CustomersResponse struct {
